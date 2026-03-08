@@ -1,0 +1,79 @@
+[mysql]
+# Client default character set
+default-character-set=utf8mb4
+
+[mysqld]
+# Basic configuration
+port={port}
+basedir="{basedir}"
+datadir="{basedir}\\data"
+tmpdir="{basedir}\\tmp"
+
+# Character set and collation
+character_set_server=utf8mb4
+collation_server=utf8mb4_0900_ai_ci
+
+# Connections and caching
+max_connections=500
+max_connect_errors=1000
+connect_timeout=10
+wait_timeout=28800
+
+# Error log
+log_error="{basedir}\\logs\\mysql_error.log"
+pid_file="{basedir}\\mysql.pid"
+
+# Security parameters
+local_infile=0                      # Prevents unauthorized LOAD DATA LOCAL
+skip_name_resolve=ON                # Use IP-based client connections only; disables DNS lookup for faster connection/authentication
+lower_case_table_names=1            # Table names are stored in lowercase
+open_files_limit=65536              # Prevents "too many open files" errors
+
+# Log settings
+slow_query_log=ON                      # Enable slow query logging for performance troubleshooting
+slow_query_log_file="{basedir}\\logs\\slow.log"  # Path to slow query log file
+long_query_time=2                      # Define slow queries as those taking more than 2 seconds
+log_timestamps=system                  # Use system timezone in logs instead of UTC
+event_scheduler=ON                     # Enable event scheduler for timed MySQL events
+general_log=OFF                        # Disable general query log by default to reduce I/O
+
+# Authentication and security
+# Keep the server default authentication plugin for compatibility with MySQL 8.4 and 9.x.
+read_only=OFF                          # Allow write operations (portable single-instance setup)
+
+# Data consistency parameters
+log_bin=mysql-bin                     # Enable binary logging
+sync_binlog=1                         # Ensures binary log is synchronized to disk at each commit
+log_bin_trust_function_creators=ON    # Allow non-SUPER users to create stored functions
+binlog_rows_query_log_events=ON       # Include original SQL statements in row-based binary logs
+binlog_expire_logs_seconds=604800     # Auto-purge binary logs after 7 days
+
+# InnoDB configuration
+default_storage_engine=InnoDB
+innodb_buffer_pool_size=128M
+# innodb_buffer_pool_size=19200M    # For production with >32GB RAM
+innodb_flush_log_at_trx_commit=1    # ACID compliant setting, ensures durability
+innodb_file_per_table=ON            # Each table stored in separate file
+# innodb_flush_method=O_DIRECT      # Windows equivalent not needed, MySQL uses appropriate method automatically
+innodb_buffer_pool_instances=8      # Multiple instances reduce contention
+# innodb_buffer_pool_instances=16   # For production with >16 cores
+innodb_strict_mode=1                # Prevents invalid configurations
+innodb_print_all_deadlocks=1          # Logs all deadlocks for troubleshooting
+innodb_lock_wait_timeout=50           # Time in seconds a transaction waits for row locks
+innodb_autoinc_lock_mode=2            # Use interleaved auto-increment lock mode for better concurrency
+
+# Performance tuning
+back_log=128
+thread_cache_size=16
+table_open_cache=512
+
+# SQL mode
+sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION   # Stricter SQL mode without ONLY_FULL_GROUP_BY
+
+# Replication settings - disabled for standalone portable version
+gtid_mode=OFF
+enforce_gtid_consistency=OFF
+skip_replica_start=1                # Updated from deprecated skip_slave_start
+
+# Plugin directory
+plugin_dir="{basedir}\\lib\\plugin"

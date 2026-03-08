@@ -1,0 +1,18 @@
+# Exclude all zip files
+*.zip
+
+# Exclude output directory
+/output/
+
+# Common files to ignore
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.log
+*.bak 
+
+# Local source docs not for publishing
+简介 (1).docx

@@ -1,0 +1,47 @@
+@echo off
+setlocal enabledelayedexpansion
+
+::last update by MySQL Portable Creator
+
+:: Move to the root directory (two levels up from backup_scripts)
+cd /d "%~dp0\..\.."
+
+:: Compute base directory
+set "BASE_DIR=%cd%"
+set "SCRIPTS_DIR=%BASE_DIR%\scripts"
+set "BACKUP_DIR=%SCRIPTS_DIR%\backup_scripts\backup"
+set "MYSQL_PORT={port}"
+
+:: Build a locale-independent timestamp via PowerShell
+for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd"`) do set "CURRENT_DATE=%%i"
+for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "Get-Date -Format HH-mm-ss"`) do set "CURRENT_TIME=%%i"
+set "DATETIME=%CURRENT_DATE%_%CURRENT_TIME%"
+
+:: Create backup directory with date
+mkdir "%BACKUP_DIR%\%CURRENT_DATE%" 2>nul
+
+echo [INFO] Backing up all databases on port !MYSQL_PORT!...
+echo [INFO] Backup will include events and routines (views, functions, procedures)
+
+:: Check if bin directory exists
+if not exist "!BASE_DIR!\bin" (
+    echo [ERROR] MySQL bin directory not found at: !BASE_DIR!\bin
+    echo [ERROR] This script must be placed in the scripts/backup_scripts folder of your MySQL installation.
+    pause
+    exit /b 1
+)
+
+:: Execute mysqldump command with events and routines
+:: -E = Include events
+:: -R = Include routines (stored procedures, functions)
+"!BASE_DIR!\bin\mysqldump.exe" -uroot -P!MYSQL_PORT! -ER --all-databases > "%BACKUP_DIR%\%CURRENT_DATE%\mysql_backup_%DATETIME%.sql"
+
+if !ERRORLEVEL! NEQ 0 (
+    echo [ERROR] Backup failed. Please check MySQL connection and privileges.
+) else (
+    echo [SUCCESS] Backup completed successfully.
+    echo [INFO] Backup saved to: %BACKUP_DIR%\%CURRENT_DATE%\mysql_backup_%DATETIME%.sql
+)
+
+pause
+exit /b 0 

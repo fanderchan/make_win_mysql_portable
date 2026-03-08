@@ -1,0 +1,62 @@
+@echo off
+setlocal enabledelayedexpansion
+
+::last update by MySQL Portable Creator
+
+:: Move to the root directory (two levels up from backup_scripts)
+cd /d "%~dp0\..\.."
+
+:: Compute base directory
+set "BASE_DIR=%cd%"
+set "MYSQL_PORT={port}"
+
+:: Check if SQL file was provided via drag and drop
+if "%~1"=="" (
+    echo [ERROR] Please drag and drop a SQL file onto this batch file.
+    pause
+    exit /b 1
+)
+
+:: Verify the file exists and has .sql extension
+if not exist "%~1" (
+    echo [ERROR] File not found: %~1
+    pause
+    exit /b 1
+)
+
+if /i not "%~x1"==".sql" (
+    echo [ERROR] Not a SQL file: %~1
+    pause
+    exit /b 1
+)
+
+:: Check if bin directory exists
+if not exist "!BASE_DIR!\bin" (
+    echo [ERROR] MySQL bin directory not found at: !BASE_DIR!\bin
+    echo [ERROR] This script must be placed in the scripts/backup_scripts folder of your MySQL installation.
+    pause
+    exit /b 1
+)
+
+echo [INFO] Restoring from: %~nx1
+echo [WARNING] This will overwrite any existing databases with the same names.
+set /p CONFIRM="Are you sure you want to proceed? (Y/N): "
+if /i not "!CONFIRM!"=="Y" (
+    echo [INFO] Restore cancelled by user.
+    pause
+    exit /b 0
+)
+
+echo [INFO] Starting restore process, please wait...
+
+:: Execute mysql command to restore
+"!BASE_DIR!\bin\mysql.exe" -uroot -P!MYSQL_PORT! < "%~1"
+
+if !ERRORLEVEL! NEQ 0 (
+    echo [ERROR] Restore failed. Please check MySQL connection and privileges.
+) else (
+    echo [SUCCESS] Restore completed successfully.
+)
+
+pause
+exit /b 0 

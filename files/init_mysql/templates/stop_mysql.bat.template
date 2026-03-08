@@ -1,0 +1,79 @@
+@echo off
+setlocal enabledelayedexpansion
+
+:: Compute base directory (trim trailing backslash)
+set "BASE_DIR=%~dp0"
+set "BASE_DIR=!BASE_DIR:~0,-1!"
+
+:: Use port placeholder directly - will be replaced by init script
+set "MYSQL_PORT={port}"
+set "MYSQL_SERVICE_NAME=MySQL!MYSQL_PORT!"
+
+echo [INFO] Stopping MySQL service (!MYSQL_SERVICE_NAME!) on port !MYSQL_PORT!...
+
+:: Check if service exists
+sc query !MYSQL_SERVICE_NAME! >nul 2>&1
+if !ERRORLEVEL! NEQ 0 (
+    echo [ERROR] Service !MYSQL_SERVICE_NAME! does not exist.
+    goto :END_FAILURE
+)
+
+:: Check if service is running
+sc query !MYSQL_SERVICE_NAME! | find "RUNNING" >nul
+if !ERRORLEVEL! NEQ 0 (
+    echo [INFO] Service !MYSQL_SERVICE_NAME! is not running.
+) else (
+    :: Stop the service
+    echo [INFO] Stopping MySQL service !MYSQL_SERVICE_NAME!...
+    net stop !MYSQL_SERVICE_NAME!
+
+    if !ERRORLEVEL! NEQ 0 (
+        echo [ERROR] Failed to stop service !MYSQL_SERVICE_NAME!.
+        echo [INFO] Service may be in use or you need administrator privileges.
+        echo [INFO] If you see 'Access is denied' or similar, please right-click and run this script as Administrator.
+        goto :END_FAILURE
+    )
+    
+    echo [SUCCESS] MySQL service !MYSQL_SERVICE_NAME! stopped successfully!
+)
+
+:: Ask if user wants to remove the service
+echo [INFO] Do you want to remove the MySQL service? (Y/N)
+echo [INFO] Press Enter for default (N) to keep the service
+set /p "REMOVE_SERVICE=Enter Y to remove or press Enter to keep: "
+
+:: Default to N if user just pressed Enter
+if "!REMOVE_SERVICE!"=="" set "REMOVE_SERVICE=N"
+
+if /i "!REMOVE_SERVICE!"=="Y" (
+    echo [INFO] Removing MySQL service !MYSQL_SERVICE_NAME!...
+    "!BASE_DIR!\bin\mysqld.exe" --remove !MYSQL_SERVICE_NAME!
+    
+    if !ERRORLEVEL! NEQ 0 (
+        echo [WARNING] Could not fully remove the service.
+        echo [INFO] If you see 'Access is denied' or similar, please right-click and run this script as Administrator.
+        goto :END_FAILURE
+    ) else (
+        echo [SUCCESS] Service !MYSQL_SERVICE_NAME! removed successfully.
+    )
+) else (
+    echo [INFO] Service will be kept as requested.
+)
+
+goto :END_SUCCESS
+
+:END_SUCCESS
+:: Countdown before closing the window
+set "COUNT=10"
+:COUNTDOWN_SUCCESS
+if %COUNT% LEQ 0 exit /b 0
+echo [INFO] Operation successful! Window will close in %COUNT% seconds...
+set /A COUNT-=1
+timeout /t 1 >nul
+goto COUNTDOWN_SUCCESS
+
+:END_FAILURE
+echo [INFO] Operation failed! Press any key to close the window...
+pause >nul
+endlocal
+exit /b 1
