@@ -13,7 +13,9 @@ set "BACKUP_DIR=%SCRIPTS_DIR%\backup_scripts\backup"
 set "MYSQL_PORT={port}"
 set "MYSQL_EXE=!BASE_DIR!\bin\mysql.exe"
 set "MYSQLDUMP_EXE=!BASE_DIR!\bin\mysqldump.exe"
-set "MYSQLDUMP_COMMON_ARGS=-uroot -P!MYSQL_PORT! --routines --events --triggers"
+set "MYSQL_CONNECTION_ARGS=-uroot -P!MYSQL_PORT!"
+rem If needed, add password here, for example: set "MYSQL_CONNECTION_ARGS=-uroot -pYourPassword -P!MYSQL_PORT!"
+set "MYSQLDUMP_COMMON_ARGS=!MYSQL_CONNECTION_ARGS! --routines --events --triggers"
 
 :: Build a locale-independent timestamp via PowerShell
 for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd"`) do set "CURRENT_DATE=%%i"
@@ -67,7 +69,7 @@ if !ERRORLEVEL! NEQ 0 (
 )
 
 echo [INFO] Querying database list for per-database backups...
-"!MYSQL_EXE!" -uroot -P!MYSQL_PORT! -N -B -e "SHOW DATABASES" > "!DB_LIST_FILE!"
+"!MYSQL_EXE!" !MYSQL_CONNECTION_ARGS! -N -B -e "SHOW DATABASES" > "!DB_LIST_FILE!"
 if !ERRORLEVEL! NEQ 0 (
     echo [ERROR] Failed to query database list. Please check MySQL connection and privileges.
     if exist "!DB_LIST_FILE!" del /f /q "!DB_LIST_FILE!" >nul 2>&1
@@ -145,13 +147,14 @@ if !ERRORLEVEL! NEQ 0 (
 exit /b 0
 
 :SANITIZE_FILE_NAME
-setlocal enabledelayedexpansion
-set "VALUE=!%~1!"
-set "VALUE=!VALUE:\=_!"
-set "VALUE=!VALUE:/=_!"
-set "VALUE=!VALUE::=_!"
-set "VALUE=!VALUE:*=_!"
-set "VALUE=!VALUE:?=_!"
-set "VALUE=!VALUE:|=_!"
-endlocal & set "%~1=%VALUE%"
+setlocal
+set "SANITIZE_FILE_NAME_INPUT=!%~1!"
+set "SANITIZED_VALUE="
+for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "$value = $env:SANITIZE_FILE_NAME_INPUT; foreach ($ch in [System.IO.Path]::GetInvalidFileNameChars()) { $value = $value.Replace($ch, '_') }; Write-Output $value"`) do (
+    set "SANITIZED_VALUE=%%I"
+)
+if not defined SANITIZED_VALUE (
+    set "SANITIZED_VALUE=%SANITIZE_FILE_NAME_INPUT%"
+)
+endlocal & set "%~1=%SANITIZED_VALUE%"
 exit /b 0
