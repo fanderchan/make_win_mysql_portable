@@ -24,23 +24,49 @@ if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 
 echo [INFO] Scanning for MySQL ZIP archive...
 
-rem Auto-detect MySQL zip file (format: mysql-<major>.<minor>.<patch>-winx64.zip)
+rem Auto-detect MySQL zip file
 set "FOUND_ZIP="
-for %%f in (mysql-*-winx64.zip) do (
+set "MYSQL_VERSION="
+set "MYSQL_PACKAGE_LABEL="
+for %%z in (mysql-*-winx64.zip) do (
     set "MYSQL_VERSION="
+    set "MYSQL_PACKAGE_LABEL="
+    set "MYSQL_RELEASE_TAG="
 
-    rem Extract version number - from mysql-8.0.42-winx64.zip filename
-    for /f "tokens=1,2,3,4,5 delims=-." %%a in ("%%f") do (
-        if /i "%%a"=="mysql" if /i "%%e"=="winx64" (
-            if "%%b"=="8" if "%%c"=="0" set "MYSQL_VERSION=%%b.%%c.%%d"
-            if "%%b"=="8" if "%%c"=="4" set "MYSQL_VERSION=%%b.%%c.%%d"
-            if "%%b"=="9" set "MYSQL_VERSION=%%b.%%c.%%d"
+    rem Supported filenames:
+    rem   mysql-8.0.x-winx64.zip
+    rem   mysql-8.4.x-winx64.zip
+    rem   mysql-9.x.x-winx64.zip
+    rem   mysql-9.x.x-er-winx64.zip
+    for /f "tokens=1,2,3,4,5,6,7 delims=-." %%a in ("%%z") do (
+        if /i "%%a"=="mysql" (
+            if /i "%%e"=="winx64" (
+                if "%%b"=="8" if "%%c"=="0" (
+                    set "MYSQL_VERSION=%%b.%%c.%%d"
+                    set "MYSQL_PACKAGE_LABEL=!MYSQL_VERSION!"
+                )
+                if "%%b"=="8" if "%%c"=="4" (
+                    set "MYSQL_VERSION=%%b.%%c.%%d"
+                    set "MYSQL_PACKAGE_LABEL=!MYSQL_VERSION!"
+                )
+                if "%%b"=="9" (
+                    set "MYSQL_VERSION=%%b.%%c.%%d"
+                    set "MYSQL_PACKAGE_LABEL=!MYSQL_VERSION!"
+                )
+            )
+            if /i "%%e"=="er" if /i "%%f"=="winx64" (
+                if "%%b"=="9" (
+                    set "MYSQL_VERSION=%%b.%%c.%%d"
+                    set "MYSQL_RELEASE_TAG=%%e"
+                    set "MYSQL_PACKAGE_LABEL=!MYSQL_VERSION!-!MYSQL_RELEASE_TAG!"
+                )
+            )
         )
     )
 
-    if defined MYSQL_VERSION (
-        set "FOUND_ZIP=%%f"
-        echo [INFO] Found MySQL archive: %%f (Version: !MYSQL_VERSION!^)
+    if defined MYSQL_PACKAGE_LABEL (
+        set "FOUND_ZIP=%%z"
+        echo [INFO] Found MySQL archive: %%z (Package: !MYSQL_PACKAGE_LABEL!, Base version: !MYSQL_VERSION!^)
         goto :PROCESS_FILE
     )
 )
@@ -51,13 +77,14 @@ if not defined FOUND_ZIP (
     echo   mysql-8.0.x-winx64.zip
     echo   mysql-8.4.x-winx64.zip
     echo   mysql-9.x.x-winx64.zip
+    echo   mysql-9.x.x-er-winx64.zip
     echo Please place a compatible MySQL ZIP archive in the script directory and try again.
     goto :END
 )
 
 :PROCESS_FILE
 set "MYSQL_ZIP=%SCRIPT_DIR%%FOUND_ZIP%"
-set "TARGET_DIR=%OUTPUT_DIR%\mysql-%MYSQL_VERSION%-portable"
+set "TARGET_DIR=%OUTPUT_DIR%\mysql-%MYSQL_PACKAGE_LABEL%-portable"
 
 echo [INFO] Creating target directory: %TARGET_DIR%
 if exist "%TARGET_DIR%" rmdir /s /q "%TARGET_DIR%"
@@ -242,7 +269,7 @@ if exist "%FILES_DIR%\README.md" (
 )
 
 echo [INFO] Creating portable installation package...
-set "ZIP_FILE=%OUTPUT_DIR%\mysql-%MYSQL_VERSION%-portable.zip"
+set "ZIP_FILE=%OUTPUT_DIR%\mysql-%MYSQL_PACKAGE_LABEL%-portable.zip"
 
 rem Delete existing zip if it exists
 if exist "%ZIP_FILE%" del /f /q "%ZIP_FILE%"

@@ -11,17 +11,26 @@ set "BASE_DIR=%cd%"
 set "SCRIPTS_DIR=%BASE_DIR%\scripts"
 set "BACKUP_DIR=%SCRIPTS_DIR%\backup_scripts\backup"
 set "MYSQL_PORT={port}"
+set "MYSQL_EXE=!BASE_DIR!\bin\mysql.exe"
+set "MYSQLDUMP_EXE=!BASE_DIR!\bin\mysqldump.exe"
+set "MYSQLDUMP_COMMON_ARGS=-uroot -P!MYSQL_PORT! --routines --events --triggers"
 
 :: Build a locale-independent timestamp via PowerShell
 for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd"`) do set "CURRENT_DATE=%%i"
 for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "Get-Date -Format HH-mm-ss"`) do set "CURRENT_TIME=%%i"
 set "DATETIME=%CURRENT_DATE%_%CURRENT_TIME%"
+set "RUN_BACKUP_DIR=%BACKUP_DIR%\%CURRENT_DATE%\%DATETIME%"
+set "FULL_BACKUP_DIR=%RUN_BACKUP_DIR%\full"
+set "DATABASE_BACKUP_DIR=%RUN_BACKUP_DIR%\databases"
+set "FULL_BACKUP_FILE=%FULL_BACKUP_DIR%\mysql_all_%DATETIME%.sql"
+set "DB_LIST_FILE=%RUN_BACKUP_DIR%\database_list.txt"
+set "FULL_BACKUP_OK=0"
+set "SINGLE_BACKUP_OK=0"
+set "SINGLE_BACKUP_FAIL=0"
 
-:: Create backup directory with date
-mkdir "%BACKUP_DIR%\%CURRENT_DATE%" 2>nul
-
-echo [INFO] Backing up all databases on port !MYSQL_PORT!...
-echo [INFO] Backup will include events and routines (views, functions, procedures)
+echo [INFO] Starting backup on port !MYSQL_PORT!...
+echo [INFO] Backup will create one full dump and one dump per database.
+echo [INFO] Backup will include triggers, events, functions and procedures.
 
 :: Check if bin directory exists
 if not exist "!BASE_DIR!\bin" (
@@ -31,17 +40,118 @@ if not exist "!BASE_DIR!\bin" (
     exit /b 1
 )
 
-:: Execute mysqldump command with events and routines
-:: -E = Include events
-:: -R = Include routines (stored procedures, functions)
-"!BASE_DIR!\bin\mysqldump.exe" -uroot -P!MYSQL_PORT! -ER --all-databases > "%BACKUP_DIR%\%CURRENT_DATE%\mysql_backup_%DATETIME%.sql"
+if not exist "!MYSQL_EXE!" (
+    echo [ERROR] mysql.exe not found at: !MYSQL_EXE!
+    pause
+    exit /b 1
+)
+
+if not exist "!MYSQLDUMP_EXE!" (
+    echo [ERROR] mysqldump.exe not found at: !MYSQLDUMP_EXE!
+    pause
+    exit /b 1
+)
+
+mkdir "!FULL_BACKUP_DIR!" 2>nul
+mkdir "!DATABASE_BACKUP_DIR!" 2>nul
+
+echo [INFO] Creating full backup...
+"!MYSQLDUMP_EXE!" !MYSQLDUMP_COMMON_ARGS! --all-databases > "!FULL_BACKUP_FILE!"
 
 if !ERRORLEVEL! NEQ 0 (
-    echo [ERROR] Backup failed. Please check MySQL connection and privileges.
+    echo [ERROR] Full backup failed. Please check MySQL connection and privileges.
+    if exist "!FULL_BACKUP_FILE!" del /f /q "!FULL_BACKUP_FILE!" >nul 2>&1
 ) else (
+    set "FULL_BACKUP_OK=1"
+    echo [SUCCESS] Full backup saved to: !FULL_BACKUP_FILE!
+)
+
+echo [INFO] Querying database list for per-database backups...
+"!MYSQL_EXE!" -uroot -P!MYSQL_PORT! -N -B -e "SHOW DATABASES" > "!DB_LIST_FILE!"
+if !ERRORLEVEL! NEQ 0 (
+    echo [ERROR] Failed to query database list. Please check MySQL connection and privileges.
+    if exist "!DB_LIST_FILE!" del /f /q "!DB_LIST_FILE!" >nul 2>&1
+    pause
+    exit /b 1
+)
+
+for /f "usebackq delims=" %%D in ("!DB_LIST_FILE!") do (
+    set "DB_NAME=%%D"
+    if not "!DB_NAME!"=="" (
+        call :BACKUP_SINGLE_DATABASE "%%D"
+    )
+)
+
+if exist "!DB_LIST_FILE!" del /f /q "!DB_LIST_FILE!" >nul 2>&1
+
+echo.
+echo [INFO] Backup summary:
+echo [INFO]   Full backup files: !FULL_BACKUP_OK!
+echo [INFO]   Per-database backup success count: !SINGLE_BACKUP_OK!
+echo [INFO]   Per-database backup failure count: !SINGLE_BACKUP_FAIL!
+echo [INFO]   Backup root directory: !RUN_BACKUP_DIR!
+
+if !FULL_BACKUP_OK! EQU 1 if !SINGLE_BACKUP_FAIL! EQU 0 (
     echo [SUCCESS] Backup completed successfully.
-    echo [INFO] Backup saved to: %BACKUP_DIR%\%CURRENT_DATE%\mysql_backup_%DATETIME%.sql
+    pause
+    exit /b 0
+)
+
+if !FULL_BACKUP_OK! EQU 0 (
+    echo [WARNING] Full backup was not generated successfully.
+)
+
+if !SINGLE_BACKUP_FAIL! GTR 0 (
+    echo [WARNING] One or more per-database backups failed.
 )
 
 pause
-exit /b 0 
+exit /b 1
+
+:BACKUP_SINGLE_DATABASE
+set "DB_NAME=%~1"
+
+if /i "!DB_NAME!"=="information_schema" (
+    echo [INFO] Skipping system schema: !DB_NAME!
+    exit /b 0
+)
+
+if /i "!DB_NAME!"=="performance_schema" (
+    echo [INFO] Skipping system schema: !DB_NAME!
+    exit /b 0
+)
+
+if /i "!DB_NAME!"=="sys" (
+    echo [INFO] Skipping system schema: !DB_NAME!
+    exit /b 0
+)
+
+set "DB_FILE_NAME=!DB_NAME!"
+call :SANITIZE_FILE_NAME DB_FILE_NAME
+set "DB_BACKUP_FILE=!DATABASE_BACKUP_DIR!\!DB_FILE_NAME!_%DATETIME%.sql"
+
+echo [INFO] Backing up database: !DB_NAME!
+"!MYSQLDUMP_EXE!" !MYSQLDUMP_COMMON_ARGS! --databases "!DB_NAME!" > "!DB_BACKUP_FILE!"
+
+if !ERRORLEVEL! NEQ 0 (
+    set /a "SINGLE_BACKUP_FAIL+=1"
+    echo [ERROR] Failed to back up database: !DB_NAME!
+    if exist "!DB_BACKUP_FILE!" del /f /q "!DB_BACKUP_FILE!" >nul 2>&1
+) else (
+    set /a "SINGLE_BACKUP_OK+=1"
+    echo [SUCCESS] Per-database backup saved to: !DB_BACKUP_FILE!
+)
+
+exit /b 0
+
+:SANITIZE_FILE_NAME
+setlocal enabledelayedexpansion
+set "VALUE=!%~1!"
+set "VALUE=!VALUE:\=_!"
+set "VALUE=!VALUE:/=_!"
+set "VALUE=!VALUE::=_!"
+set "VALUE=!VALUE:*=_!"
+set "VALUE=!VALUE:?=_!"
+set "VALUE=!VALUE:|=_!"
+endlocal & set "%~1=%VALUE%"
+exit /b 0

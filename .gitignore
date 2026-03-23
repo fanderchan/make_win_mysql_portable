@@ -8,6 +8,7 @@
 .DS_Store
 Thumbs.db
 desktop.ini
+AGENTS.md
 
 # Temporary files
 *.tmp

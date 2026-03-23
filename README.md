@@ -11,6 +11,7 @@
 - `mysql-8.0.x-winx64.zip`
 - `mysql-8.4.x-winx64.zip`
 - `mysql-9.x.x-winx64.zip`
+- `mysql-9.x.x-er-winx64.zip`
 
 当前不支持：
 
@@ -25,12 +26,17 @@
 运行 `create_mysql_portable.bat` 后，脚本会：
 
 1. 自动识别根目录下的官方 MySQL ZIP 包
-2. 解压到 `output\\mysql-<version>-portable\\`
+2. 解压到 `output\\mysql-<package-label>-portable\\`
 3. 删除 `.pdb`、`*-debug.dll`、`*_debug.dll`、`.lib`、`.pl`、`docs`、`include`
 4. 创建 `data`、`logs`、`tmp`
 5. 拷贝 `files\\init_mysql` 和包内 `README.md`
-6. 输出 `output\\mysql-<version>-portable.zip`
+6. 输出 `output\\mysql-<package-label>-portable.zip`
 7. 可选下载 `vc_redist.x64.exe`
+
+其中：
+
+- 正式版 ZIP 例如 `mysql-9.7.0-winx64.zip`，输出名是 `mysql-9.7.0-portable.zip`
+- ER 版 ZIP 例如 `mysql-9.7.0-er-winx64.zip`，输出名是 `mysql-9.7.0-er-portable.zip`
 
 脚本不会自动初始化数据库。初始化发生在你解压生成包后运行 `init_mysql\\init_mysql.bat` 时。
 
@@ -49,12 +55,12 @@
 1. 把一个官方 MySQL ZIP 包放到仓库根目录，与 `create_mysql_portable.bat` 同级
 2. 运行 `create_mysql_portable.bat`
 3. 在 `output\\` 目录获得：
-   - `mysql-<version>-portable\\`
-   - `mysql-<version>-portable.zip`
+   - `mysql-<package-label>-portable\\`
+   - `mysql-<package-label>-portable.zip`
 
 ### 2. 使用生成的便携包
 
-1. 解压 `mysql-<version>-portable.zip`
+1. 解压 `mysql-<package-label>-portable.zip`
 2. 运行 `init_mysql\\init_mysql.bat`
 3. 输入端口，直接回车默认 `3306`
 4. 运行 `start_mysql.bat`
@@ -74,6 +80,7 @@
   - `scripts\\connect.bat`
   - `scripts\\backup_scripts\\backup.bat`
   - `scripts\\backup_scripts\\restore.bat`
+- `scripts\\backup_scripts\\backup.bat` 默认会同时生成一份全备和按库拆分的单库备份，便于整库恢复或按库恢复
 
 首次登录后建议立即设置密码：
 

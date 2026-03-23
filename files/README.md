@@ -27,7 +27,7 @@ ALTER USER 'root'@'localhost' IDENTIFIED BY 'your_password';
 - `scripts\connect.bat`
   使用当前端口直接连接本机 MySQL。
 - `scripts\backup_scripts\backup.bat`
-  备份当前实例全部数据库，输出到 `scripts\backup_scripts\backup\日期\`。
+  每次会生成一份全备，并按库分别导出单库备份，输出到 `scripts\backup_scripts\backup\日期\时间戳\`，方便按需恢复单库或整库。
 - `scripts\backup_scripts\restore.bat`
   把 `.sql` 文件拖到脚本上即可恢复。
 
