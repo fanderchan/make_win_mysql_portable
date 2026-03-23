@@ -25,7 +25,7 @@ pid_file="{basedir}\\mysql.pid"
 
 # Security parameters
 local_infile=0                      # Prevents unauthorized LOAD DATA LOCAL
-skip_name_resolve=ON                # Use IP-based client connections only; disables DNS lookup for faster connection/authentication
+skip_name_resolve=OFF               # Keep hostname resolution enabled; more convenient for typical Windows localhost/hostname usage
 lower_case_table_names=1            # Table names are stored in lowercase
 open_files_limit=65536              # Prevents "too many open files" errors
 
