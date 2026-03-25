@@ -4,6 +4,17 @@
 
 项目名为 `make_win_mysql_portable`，当前实现已经按版本家族处理，不再只限定在 8.0。
 
+## 下载 ZIP 包示例
+
+如果你不知道去哪里下载 `mysql-8.0.x-winx64.zip`、`mysql-8.4.x-winx64.zip` 或 `mysql-9.7.0-er-winx64.zip`，可以直接参考下面这些官方链接。
+
+- MySQL 8.0 官方下载页：[MySQL Community Server 8.0](https://dev.mysql.com/downloads/mysql/8.0.html)
+- MySQL 8.4 官方下载页：[MySQL Community Server 8.4](https://dev.mysql.com/downloads/mysql/8.4.html)
+- 8.0 直链示例：[`mysql-8.0.45-winx64.zip`](https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.45-winx64.zip)
+- 8.4 直链示例：[`mysql-8.4.8-winx64.zip`](https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.8-winx64.zip)
+- 9.7 ER 直链示例：[`mysql-9.7.0-er-winx64.zip`](https://downloads.mysql.com/snapshots/pb/mysql-9.7.0-er/mysql-9.7.0-er-winx64.zip)
+- 截至 `2026-03-25`，MySQL 9.7 GA 版还没有发布；如果你要测试 9.7，只能先用 ER 快照包。
+
 ## 支持范围
 
 当前脚本识别以下官方 ZIP 命名：
@@ -20,6 +31,19 @@
 - 非 `winx64` 的压缩包
 
 建议每次只在仓库根目录放一个待处理 ZIP，脚本会处理找到的第一个匹配文件。
+
+## 参数说明
+
+参数细节不再堆在主 README 里，单独整理到了这里：
+
+- [MySQL 参数说明与默认值对照](docs/mysql-default-parameters.md)
+
+这份文档里包含：
+
+- `init_mysql\init_mysql.ps1` 的脚本参数
+- `my.ini.template` 当前写入的模板值
+- MySQL `8.0`、`8.4`、`9.7.0 ER` 的默认值对照
+- 每个参数的用途说明
 
 ## 这个项目实际会做什么
 
@@ -53,6 +77,7 @@
 ### 1. 打包
 
 1. 把一个官方 MySQL ZIP 包放到仓库根目录，与 `create_mysql_portable.bat` 同级
+   - 如果不知道下载地址，直接看上面的“下载 ZIP 包示例”
 2. 运行 `create_mysql_portable.bat`
 3. 在 `output\\` 目录获得：
    - `mysql-<package-label>-portable\\`
@@ -110,12 +135,12 @@ ALTER USER 'root'@'localhost' IDENTIFIED BY 'your_password';
 
 - `create_mysql_portable.bat`
   打包入口，负责识别 ZIP、裁剪文件、复制模板并生成最终压缩包。
+- `docs\\mysql-default-parameters.md`
+  独立参数说明文档，集中放脚本参数和 MySQL 默认值对照。
 - `files\\init_mysql\\`
   初始化脚本和模板目录，会原样复制到生成包。
 - `files\\README.md`
   生成包内附带的使用说明。
-- `简介 (1).docx`
-  旧文档来源，当前 README 已按仓库真实实现重新整理。
 
 ## 参考
 
